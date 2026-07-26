@@ -1,0 +1,698 @@
+
+blink.elf:     file format elf32-littleriscv
+
+
+Disassembly of section .init:
+
+00000000 <InterruptVector>:
+	void InterruptVectorDefault()  __attribute__((naked)) __attribute((section(".init"))) __attribute((naked));
+
+	void InterruptVectorDefault( void )
+	{
+		#if !defined(FUNCONF_TINYVECTOR) || !FUNCONF_TINYVECTOR
+			asm volatile( DEFAULT_INTERRUPT_VECTOR_CONTENTS );
+   0:	10c0006f          	j	10c <handle_reset>
+   4:	00000000          	.word	0x00000000
+   8:	000001cc          	.word	0x000001cc
+   c:	00000180          	.word	0x00000180
+	...
+  30:	00000180          	.word	0x00000180
+  34:	00000000          	.word	0x00000000
+  38:	00000180          	.word	0x00000180
+  3c:	00000000          	.word	0x00000000
+  40:	00000180          	.word	0x00000180
+  44:	00000180          	.word	0x00000180
+  48:	00000180          	.word	0x00000180
+  4c:	00000180          	.word	0x00000180
+  50:	00000180          	.word	0x00000180
+  54:	00000180          	.word	0x00000180
+  58:	00000180          	.word	0x00000180
+  5c:	00000180          	.word	0x00000180
+  60:	00000180          	.word	0x00000180
+  64:	00000180          	.word	0x00000180
+  68:	00000180          	.word	0x00000180
+  6c:	00000180          	.word	0x00000180
+  70:	00000180          	.word	0x00000180
+  74:	00000180          	.word	0x00000180
+  78:	00000180          	.word	0x00000180
+  7c:	00000180          	.word	0x00000180
+  80:	00000180          	.word	0x00000180
+  84:	00000180          	.word	0x00000180
+  88:	00000180          	.word	0x00000180
+  8c:	00000180          	.word	0x00000180
+  90:	00000180          	.word	0x00000180
+  94:	00000180          	.word	0x00000180
+  98:	00000180          	.word	0x00000180
+  9c:	0001                	nop
+	...
+
+Disassembly of section .text:
+
+000000a0 <PrintHex>:
+	while( (*DMDATA0) & 0x80 );
+  a0:	e00007b7          	lui	a5,0xe0000
+  a4:	0f478793          	addi	a5,a5,244 # e00000f4 <_eusrstack+0xbffff8f4>
+  a8:	4398                	lw	a4,0(a5)
+  aa:	08077713          	andi	a4,a4,128
+  ae:	ff6d                	bnez	a4,a8 <PrintHex+0x8>
+	*DMDATA0 = 0x78302088; //" 0x"
+  b0:	78302737          	lui	a4,0x78302
+  b4:	08870713          	addi	a4,a4,136 # 78302088 <_eusrstack+0x58301888>
+		while( (*DMDATA0) & 0x80 );
+  b8:	e00006b7          	lui	a3,0xe0000
+	*DMDATA0 = 0x78302088; //" 0x"
+  bc:	c398                	sw	a4,0(a5)
+		while( (*DMDATA0) & 0x80 );
+  be:	0f468693          	addi	a3,a3,244 # e00000f4 <_eusrstack+0xbffff8f4>
+	for( shift = 28; shift >= 0; shift -= 4 )
+  c2:	4771                	li	a4,28
+		s += ( s < 10 ) ? '0' : ('a' - 10);
+  c4:	45a5                	li	a1,9
+	for( shift = 28; shift >= 0; shift -= 4 )
+  c6:	5671                	li	a2,-4
+		while( (*DMDATA0) & 0x80 );
+  c8:	429c                	lw	a5,0(a3)
+  ca:	0807f793          	andi	a5,a5,128
+  ce:	ffed                	bnez	a5,c8 <PrintHex+0x28>
+		int s = (n>>shift) & 0xf;
+  d0:	00e55333          	srl	t1,a0,a4
+  d4:	00f37313          	andi	t1,t1,15
+		s += ( s < 10 ) ? '0' : ('a' - 10);
+  d8:	0065b7b3          	sltu	a5,a1,t1
+  dc:	40f007b3          	neg	a5,a5
+  e0:	0277f793          	andi	a5,a5,39
+  e4:	03078793          	addi	a5,a5,48
+  e8:	979a                	add	a5,a5,t1
+		*DMDATA0 = 0x85 | (s<<8); //" 0x"
+  ea:	07a2                	slli	a5,a5,0x8
+  ec:	0857e793          	ori	a5,a5,133
+  f0:	c29c                	sw	a5,0(a3)
+	for( shift = 28; shift >= 0; shift -= 4 )
+  f2:	1771                	addi	a4,a4,-4
+  f4:	fcc71ae3          	bne	a4,a2,c8 <PrintHex+0x28>
+}
+  f8:	8082                	ret
+
+000000fa <DelaySysTick>:
+#endif
+
+void DelaySysTick( uint32_t n )
+{
+#if defined(CH32V003) || defined(CH32V00x)
+	uint32_t targend = SysTick->CNT + n;
+  fa:	e000f737          	lui	a4,0xe000f
+  fe:	471c                	lw	a5,8(a4)
+ 100:	953e                	add	a0,a0,a5
+	while( ((int32_t)( SysTick->CNT - targend )) < 0 );
+ 102:	471c                	lw	a5,8(a4)
+ 104:	8f89                	sub	a5,a5,a0
+ 106:	fe07cee3          	bltz	a5,102 <DelaySysTick+0x8>
+	uint64_t targend = SysTick->CNT - n;
+	while( ((int64_t)( SysTick->CNT - targend )) > 0 );
+#else
+	#error DelaySysTick not defined.
+#endif
+}
+ 10a:	8082                	ret
+
+0000010c <handle_reset>:
+	asm volatile( "\n\
+ 10c:	20000197          	auipc	gp,0x20000
+ 110:	2f018193          	addi	gp,gp,752 # 200003fc <__global_pointer$>
+ 114:	20000117          	auipc	sp,0x20000
+ 118:	6ec10113          	addi	sp,sp,1772 # 20000800 <_eusrstack>
+ 11c:	6509                	lui	a0,0x2
+ 11e:	88050513          	addi	a0,a0,-1920 # 1880 <ch32fun.c.8fd019fb+0x829>
+ 122:	30051073          	csrw	mstatus,a0
+ 126:	00000697          	auipc	a3,0x0
+ 12a:	eda68693          	addi	a3,a3,-294 # 0 <InterruptVector>
+ 12e:	0036e693          	ori	a3,a3,3
+ 132:	30569073          	csrw	mtvec,a3
+asm volatile(
+ 136:	c0c18513          	addi	a0,gp,-1012 # 20000008 <_ebss>
+ 13a:	c0c18593          	addi	a1,gp,-1012 # 20000008 <_ebss>
+ 13e:	4601                	li	a2,0
+ 140:	00b55663          	bge	a0,a1,14c <handle_reset+0x40>
+ 144:	c110                	sw	a2,0(a0)
+ 146:	0511                	addi	a0,a0,4
+ 148:	feb54ee3          	blt	a0,a1,144 <handle_reset+0x38>
+ 14c:	50400513          	li	a0,1284
+ 150:	c0418593          	addi	a1,gp,-1020 # 20000000 <expected_value>
+ 154:	20000617          	auipc	a2,0x20000
+ 158:	eb460613          	addi	a2,a2,-332 # 20000008 <_ebss>
+ 15c:	00c58863          	beq	a1,a2,16c <handle_reset+0x60>
+ 160:	4114                	lw	a3,0(a0)
+ 162:	c194                	sw	a3,0(a1)
+ 164:	0511                	addi	a0,a0,4
+ 166:	0591                	addi	a1,a1,4
+ 168:	fec59ae3          	bne	a1,a2,15c <handle_reset+0x50>
+	SysTick->CTLR = 1;
+ 16c:	e000f7b7          	lui	a5,0xe000f
+ 170:	4705                	li	a4,1
+ 172:	c398                	sw	a4,0(a5)
+asm volatile(
+ 174:	23a00793          	li	a5,570
+ 178:	34179073          	csrw	mepc,a5
+ 17c:	30200073          	mret
+
+00000180 <ADC1_2_IRQHandler>:
+
+// Return the Machine Exception Program Register (MEPC)
+static inline uint32_t __get_MEPC(void)
+{
+	uint32_t result;
+	__ASM volatile( ADD_ARCH_ZICSR "csrr %0," "mepc" : "=r"(result));
+ 180:	34102573          	csrr	a0,mepc
+	PrintHex( __get_MEPC() ); // "addr2line -e debugprintfdemo.elf 0x000007e6" ---> debugprintfdemo.c:45
+ 184:	3f31                	jal	a0 <PrintHex>
+	__ASM volatile( ADD_ARCH_ZICSR "csrr %0, mstatus": "=r"(result) );
+ 186:	30002573          	csrr	a0,mstatus
+	PrintHex( __get_MSTATUS() );
+ 18a:	3f19                	jal	a0 <PrintHex>
+
+// Return the Machine Trap Value Register (MTVAL)
+static inline uint32_t __get_MTVAL(void)
+{
+	uint32_t result;
+	__ASM volatile( ADD_ARCH_ZICSR "csrr %0," "mtval" : "=r" (result) );
+ 18c:	34302573          	csrr	a0,mtval
+	PrintHex( __get_MTVAL() );
+ 190:	3f01                	jal	a0 <PrintHex>
+	__ASM volatile( ADD_ARCH_ZICSR "csrr %0," "mcause": "=r"(result));
+ 192:	34202573          	csrr	a0,mcause
+	PrintHex( __get_MCAUSE() );
+ 196:	3729                	jal	a0 <PrintHex>
+	while( (*DMDATA0) & 0x80 );
+ 198:	e00007b7          	lui	a5,0xe0000
+ 19c:	0f478793          	addi	a5,a5,244 # e00000f4 <_eusrstack+0xbffff8f4>
+ 1a0:	4398                	lw	a4,0(a5)
+ 1a2:	08077713          	andi	a4,a4,128
+ 1a6:	ff6d                	bnez	a4,1a0 <ADC1_2_IRQHandler+0x20>
+	*DMDATA0 = 0x0a85;
+ 1a8:	6705                	lui	a4,0x1
+ 1aa:	a8570713          	addi	a4,a4,-1403 # a85 <_data_lma+0x581>
+ 1ae:	c398                	sw	a4,0(a5)
+	while( (*DMDATA0) & 0x80 );
+ 1b0:	e00007b7          	lui	a5,0xe0000
+ 1b4:	0f478793          	addi	a5,a5,244 # e00000f4 <_eusrstack+0xbffff8f4>
+ 1b8:	4398                	lw	a4,0(a5)
+ 1ba:	08077713          	andi	a4,a4,128
+ 1be:	ff6d                	bnez	a4,1b8 <ADC1_2_IRQHandler+0x38>
+	*DMDATA0 = 0xaaaaaa83;
+ 1c0:	aaaab737          	lui	a4,0xaaaab
+ 1c4:	a8370713          	addi	a4,a4,-1405 # aaaaaa83 <_eusrstack+0x8aaaa283>
+ 1c8:	c398                	sw	a4,0(a5)
+	asm volatile( "1: j 1b" );
+ 1ca:	a001                	j	1ca <ADC1_2_IRQHandler+0x4a>
+
+000001cc <NMI_Handler>:
+	RCC->INTR |= RCC_CSSC;	// clear the clock security int flag
+ 1cc:	40021737          	lui	a4,0x40021
+ 1d0:	471c                	lw	a5,8(a4)
+ 1d2:	008006b7          	lui	a3,0x800
+ 1d6:	8fd5                	or	a5,a5,a3
+ 1d8:	c71c                	sw	a5,8(a4)
+
+000001da <SystemInit>:
+//#define BASE_CTLR	(((FUNCONF_HSITRIM) << 3) | HSEBYP | RCC_CSS)	// disable HSI in HSE modes
+
+	// Flash latency settings.
+#if defined(CH32V003)
+	#if FUNCONF_SYSTEM_CORE_CLOCK > 25000000
+		FLASH->ACTLR = FLASH_ACTLR_LATENCY_1;               // +1 Cycle Latency
+ 1da:	400227b7          	lui	a5,0x40022
+ 1de:	4705                	li	a4,1
+ 1e0:	c398                	sw	a4,0(a5)
+#elif defined(FUNCONF_USE_HSI) && FUNCONF_USE_HSI
+	#if defined(CH32V30x) || defined(CH32V20x) || defined(CH32L103) || defined(CH32V10x)
+		EXTEN->EXTEN_CTR |= EXTEN_PLL_HSI_PRE;
+	#endif
+	#if defined(FUNCONF_USE_PLL) && FUNCONF_USE_PLL
+		RCC->CFGR0 = BASE_CFGR0;
+ 1e2:	400217b7          	lui	a5,0x40021
+		RCC->CTLR  = BASE_CTLR | RCC_HSION | RCC_PLLON; 			// Use HSI, enable PLL.
+ 1e6:	01080737          	lui	a4,0x1080
+		RCC->CFGR0 = BASE_CFGR0;
+ 1ea:	0007a223          	sw	zero,4(a5) # 40021004 <_eusrstack+0x20020804>
+		RCC->CTLR  = BASE_CTLR | RCC_HSION | RCC_PLLON; 			// Use HSI, enable PLL.
+ 1ee:	08170713          	addi	a4,a4,129 # 1080081 <blink.c.12f4b091+0x107dcb7>
+ 1f2:	c398                	sw	a4,0(a5)
+		FLASH->ACTLR = FLASH_ACTLR_LATENCY_0;
+	#endif
+#endif
+
+#ifndef CH5xx
+	RCC->INTR  = 0x009F0000;                               // Clear PLL, CSSC, HSE, HSI and LSI ready flags.
+ 1f4:	009f0737          	lui	a4,0x9f0
+ 1f8:	c798                	sw	a4,8(a5)
+#endif
+
+#if defined(FUNCONF_USE_PLL) && FUNCONF_USE_PLL && !defined(CH5xx)
+	while((RCC->CTLR & RCC_PLLRDY) == 0) {};                       	// Wait till PLL is ready
+ 1fa:	4398                	lw	a4,0(a5)
+ 1fc:	00671693          	slli	a3,a4,0x6
+ 200:	fe06dde3          	bgez	a3,1fa <SystemInit+0x20>
+	#if defined(CH32H41x)
+		RCC->PLLCFGR |= RCC_SYSPLL_GATE;
+	#endif
+	uint32_t tmp32 = RCC->CFGR0 & ~(0x03);							// clr the SW
+ 204:	43d8                	lw	a4,4(a5)
+	RCC->CFGR0 = tmp32 | RCC_SW_PLL;                       			// Select PLL as system clock source
+	while ((RCC->CFGR0 & (uint32_t)RCC_SWS) != (uint32_t)0x08); 	// Wait till PLL is used as system clock source
+ 206:	400216b7          	lui	a3,0x40021
+	uint32_t tmp32 = RCC->CFGR0 & ~(0x03);							// clr the SW
+ 20a:	9b71                	andi	a4,a4,-4
+	RCC->CFGR0 = tmp32 | RCC_SW_PLL;                       			// Select PLL as system clock source
+ 20c:	00276713          	ori	a4,a4,2
+ 210:	c3d8                	sw	a4,4(a5)
+	while ((RCC->CFGR0 & (uint32_t)RCC_SWS) != (uint32_t)0x08); 	// Wait till PLL is used as system clock source
+ 212:	4721                	li	a4,8
+ 214:	42dc                	lw	a5,4(a3)
+ 216:	8bb1                	andi	a5,a5,12
+ 218:	fee79ee3          	bne	a5,a4,214 <SystemInit+0x3a>
+	*DMDATA1 = 0x00;
+ 21c:	e00007b7          	lui	a5,0xe0000
+ 220:	0e07ac23          	sw	zero,248(a5) # e00000f8 <_eusrstack+0xbffff8f8>
+	*DMDATA0 = 0x80;
+ 224:	08000713          	li	a4,128
+ 228:	0ee7aa23          	sw	a4,244(a5)
+	SetupDebugPrintf();
+#endif
+#if defined(FUNCONF_SUPPORT_CONSTRUCTORS) && FUNCONF_SUPPORT_CONSTRUCTORS
+	CallConstructors();
+#endif
+}
+ 22c:	8082                	ret
+
+0000022e <vulnerable_check>:
+ *     return 1
+ */
+__attribute__((naked, noinline, used))
+static int vulnerable_check(uint32_t supplied, uint32_t expected)
+{
+    __asm__ volatile(
+ 22e:	00b51463          	bne	a0,a1,236 <vulnerable_check+0x8>
+ 232:	4505                	li	a0,1
+ 234:	8082                	ret
+ 236:	4501                	li	a0,0
+ 238:	8082                	ret
+
+0000023a <main>:
+    funDigitalWrite(PIN_FAIL, FUN_LOW);
+    Delay_Ms(5);
+}
+
+int main(void)
+{
+ 23a:	1151                	addi	sp,sp,-12
+ 23c:	c406                	sw	ra,8(sp)
+ 23e:	c222                	sw	s0,4(sp)
+ 240:	c026                	sw	s1,0(sp)
+    SystemInit();
+ 242:	3f61                	jal	1da <SystemInit>
+    funGpioInitAll();
+ 244:	40021737          	lui	a4,0x40021
+ 248:	4f1c                	lw	a5,24(a4)
+    funPinMode(PIN_TRIGGER, GPIO_Speed_10MHz | GPIO_CNF_OUT_PP);
+ 24a:	40011437          	lui	s0,0x40011
+    funDigitalWrite(PIN_FAIL,    FUN_LOW);
+ 24e:	001004b7          	lui	s1,0x100
+    funGpioInitAll();
+ 252:	0357e793          	ori	a5,a5,53
+ 256:	cf1c                	sw	a5,24(a4)
+    funPinMode(PIN_TRIGGER, GPIO_Speed_10MHz | GPIO_CNF_OUT_PP);
+ 258:	401c                	lw	a5,0(s0)
+    funPinMode(PIN_SUCCESS, GPIO_Speed_10MHz | GPIO_CNF_OUT_PP);
+ 25a:	777d                	lui	a4,0xfffff
+ 25c:	0ff70713          	addi	a4,a4,255 # fffff0ff <_eusrstack+0xdfffe8ff>
+    funPinMode(PIN_TRIGGER, GPIO_Speed_10MHz | GPIO_CNF_OUT_PP);
+ 260:	f0f7f793          	andi	a5,a5,-241
+ 264:	0107e793          	ori	a5,a5,16
+ 268:	c01c                	sw	a5,0(s0)
+    funPinMode(PIN_SUCCESS, GPIO_Speed_10MHz | GPIO_CNF_OUT_PP);
+ 26a:	401c                	lw	a5,0(s0)
+    Delay_Ms(20);
+ 26c:	6575                	lui	a0,0x1d
+ 26e:	4c050513          	addi	a0,a0,1216 # 1d4c0 <blink.c.12f4b091+0x1b0f6>
+    funPinMode(PIN_SUCCESS, GPIO_Speed_10MHz | GPIO_CNF_OUT_PP);
+ 272:	8ff9                	and	a5,a5,a4
+ 274:	1007e793          	ori	a5,a5,256
+ 278:	c01c                	sw	a5,0(s0)
+    funPinMode(PIN_FAIL,    GPIO_Speed_10MHz | GPIO_CNF_OUT_PP);
+ 27a:	401c                	lw	a5,0(s0)
+ 27c:	fff10737          	lui	a4,0xfff10
+ 280:	177d                	addi	a4,a4,-1 # fff0ffff <_eusrstack+0xdff0f7ff>
+ 282:	8ff9                	and	a5,a5,a4
+ 284:	6741                	lui	a4,0x10
+ 286:	8fd9                	or	a5,a5,a4
+ 288:	c01c                	sw	a5,0(s0)
+    funDigitalWrite(PIN_TRIGGER, FUN_LOW);
+ 28a:	000207b7          	lui	a5,0x20
+ 28e:	c81c                	sw	a5,16(s0)
+    funDigitalWrite(PIN_SUCCESS, FUN_LOW);
+ 290:	000407b7          	lui	a5,0x40
+ 294:	c81c                	sw	a5,16(s0)
+    funDigitalWrite(PIN_FAIL,    FUN_LOW);
+ 296:	c804                	sw	s1,16(s0)
+    funDigitalWrite(PIN_SUCCESS, FUN_HIGH);
+ 298:	4711                	li	a4,4
+ 29a:	c818                	sw	a4,16(s0)
+    funDigitalWrite(PIN_FAIL, FUN_HIGH);
+ 29c:	4741                	li	a4,16
+ 29e:	c818                	sw	a4,16(s0)
+    Delay_Ms(20);
+ 2a0:	3da9                	jal	fa <DelaySysTick>
+    funDigitalWrite(PIN_SUCCESS, FUN_LOW);
+ 2a2:	000407b7          	lui	a5,0x40
+ 2a6:	c81c                	sw	a5,16(s0)
+    Delay_Ms(5);
+ 2a8:	651d                	lui	a0,0x7
+    funDigitalWrite(PIN_FAIL, FUN_LOW);
+ 2aa:	c804                	sw	s1,16(s0)
+    Delay_Ms(5);
+ 2ac:	53050513          	addi	a0,a0,1328 # 7530 <blink.c.12f4b091+0x5166>
+ 2b0:	35a9                	jal	fa <DelaySysTick>
+    gpio_init();
+    signal_boot();
+
+    while (1) {
+        funDigitalWrite(PIN_SUCCESS, FUN_LOW);
+ 2b2:	40011437          	lui	s0,0x40011
+ 2b6:	000404b7          	lui	s1,0x40
+ 2ba:	c804                	sw	s1,16(s0)
+        funDigitalWrite(PIN_FAIL, FUN_LOW);
+ 2bc:	001007b7          	lui	a5,0x100
+ 2c0:	c81c                	sw	a5,16(s0)
+
+        /* Trigger before a deterministic pre-branch timing window. */
+        funDigitalWrite(PIN_TRIGGER, FUN_HIGH);
+ 2c2:	4709                	li	a4,2
+ 2c4:	c818                	sw	a4,16(s0)
+
+        __asm__ volatile(
+ 2c6:	0001                	nop
+ 2c8:	0001                	nop
+ 2ca:	0001                	nop
+ 2cc:	0001                	nop
+ 2ce:	0001                	nop
+ 2d0:	0001                	nop
+ 2d2:	0001                	nop
+ 2d4:	0001                	nop
+ 2d6:	0001                	nop
+ 2d8:	0001                	nop
+ 2da:	0001                	nop
+ 2dc:	0001                	nop
+ 2de:	0001                	nop
+ 2e0:	0001                	nop
+ 2e2:	0001                	nop
+ 2e4:	0001                	nop
+ 2e6:	0001                	nop
+ 2e8:	0001                	nop
+ 2ea:	0001                	nop
+ 2ec:	0001                	nop
+ 2ee:	0001                	nop
+ 2f0:	0001                	nop
+ 2f2:	0001                	nop
+ 2f4:	0001                	nop
+ 2f6:	0001                	nop
+ 2f8:	0001                	nop
+ 2fa:	0001                	nop
+ 2fc:	0001                	nop
+ 2fe:	0001                	nop
+ 300:	0001                	nop
+ 302:	0001                	nop
+ 304:	0001                	nop
+ 306:	0001                	nop
+ 308:	0001                	nop
+ 30a:	0001                	nop
+ 30c:	0001                	nop
+ 30e:	0001                	nop
+ 310:	0001                	nop
+ 312:	0001                	nop
+ 314:	0001                	nop
+ 316:	0001                	nop
+ 318:	0001                	nop
+ 31a:	0001                	nop
+ 31c:	0001                	nop
+ 31e:	0001                	nop
+ 320:	0001                	nop
+ 322:	0001                	nop
+ 324:	0001                	nop
+ 326:	0001                	nop
+ 328:	0001                	nop
+ 32a:	0001                	nop
+ 32c:	0001                	nop
+ 32e:	0001                	nop
+ 330:	0001                	nop
+ 332:	0001                	nop
+ 334:	0001                	nop
+ 336:	0001                	nop
+ 338:	0001                	nop
+ 33a:	0001                	nop
+ 33c:	0001                	nop
+ 33e:	0001                	nop
+ 340:	0001                	nop
+ 342:	0001                	nop
+ 344:	0001                	nop
+ 346:	0001                	nop
+ 348:	0001                	nop
+ 34a:	0001                	nop
+ 34c:	0001                	nop
+ 34e:	0001                	nop
+ 350:	0001                	nop
+ 352:	0001                	nop
+ 354:	0001                	nop
+ 356:	0001                	nop
+ 358:	0001                	nop
+ 35a:	0001                	nop
+ 35c:	0001                	nop
+ 35e:	0001                	nop
+ 360:	0001                	nop
+ 362:	0001                	nop
+ 364:	0001                	nop
+ 366:	0001                	nop
+ 368:	0001                	nop
+ 36a:	0001                	nop
+ 36c:	0001                	nop
+ 36e:	0001                	nop
+ 370:	0001                	nop
+ 372:	0001                	nop
+ 374:	0001                	nop
+ 376:	0001                	nop
+ 378:	0001                	nop
+ 37a:	0001                	nop
+ 37c:	0001                	nop
+ 37e:	0001                	nop
+ 380:	0001                	nop
+ 382:	0001                	nop
+ 384:	0001                	nop
+ 386:	0001                	nop
+ 388:	0001                	nop
+ 38a:	0001                	nop
+ 38c:	0001                	nop
+ 38e:	0001                	nop
+ 390:	0001                	nop
+ 392:	0001                	nop
+ 394:	0001                	nop
+ 396:	0001                	nop
+ 398:	0001                	nop
+ 39a:	0001                	nop
+ 39c:	0001                	nop
+ 39e:	0001                	nop
+ 3a0:	0001                	nop
+ 3a2:	0001                	nop
+ 3a4:	0001                	nop
+ 3a6:	0001                	nop
+ 3a8:	0001                	nop
+ 3aa:	0001                	nop
+ 3ac:	0001                	nop
+ 3ae:	0001                	nop
+ 3b0:	0001                	nop
+ 3b2:	0001                	nop
+ 3b4:	0001                	nop
+ 3b6:	0001                	nop
+ 3b8:	0001                	nop
+ 3ba:	0001                	nop
+ 3bc:	0001                	nop
+ 3be:	0001                	nop
+ 3c0:	0001                	nop
+ 3c2:	0001                	nop
+ 3c4:	0001                	nop
+ 3c6:	0001                	nop
+ 3c8:	0001                	nop
+ 3ca:	0001                	nop
+ 3cc:	0001                	nop
+ 3ce:	0001                	nop
+ 3d0:	0001                	nop
+ 3d2:	0001                	nop
+ 3d4:	0001                	nop
+ 3d6:	0001                	nop
+ 3d8:	0001                	nop
+ 3da:	0001                	nop
+ 3dc:	0001                	nop
+ 3de:	0001                	nop
+ 3e0:	0001                	nop
+ 3e2:	0001                	nop
+ 3e4:	0001                	nop
+ 3e6:	0001                	nop
+ 3e8:	0001                	nop
+ 3ea:	0001                	nop
+ 3ec:	0001                	nop
+ 3ee:	0001                	nop
+ 3f0:	0001                	nop
+ 3f2:	0001                	nop
+ 3f4:	0001                	nop
+ 3f6:	0001                	nop
+ 3f8:	0001                	nop
+ 3fa:	0001                	nop
+ 3fc:	0001                	nop
+ 3fe:	0001                	nop
+ 400:	0001                	nop
+ 402:	0001                	nop
+ 404:	0001                	nop
+ 406:	0001                	nop
+ 408:	0001                	nop
+ 40a:	0001                	nop
+ 40c:	0001                	nop
+ 40e:	0001                	nop
+ 410:	0001                	nop
+ 412:	0001                	nop
+ 414:	0001                	nop
+ 416:	0001                	nop
+ 418:	0001                	nop
+ 41a:	0001                	nop
+ 41c:	0001                	nop
+ 41e:	0001                	nop
+ 420:	0001                	nop
+ 422:	0001                	nop
+ 424:	0001                	nop
+ 426:	0001                	nop
+ 428:	0001                	nop
+ 42a:	0001                	nop
+ 42c:	0001                	nop
+ 42e:	0001                	nop
+ 430:	0001                	nop
+ 432:	0001                	nop
+ 434:	0001                	nop
+ 436:	0001                	nop
+ 438:	0001                	nop
+ 43a:	0001                	nop
+ 43c:	0001                	nop
+ 43e:	0001                	nop
+ 440:	0001                	nop
+ 442:	0001                	nop
+ 444:	0001                	nop
+ 446:	0001                	nop
+ 448:	0001                	nop
+ 44a:	0001                	nop
+ 44c:	0001                	nop
+ 44e:	0001                	nop
+ 450:	0001                	nop
+ 452:	0001                	nop
+ 454:	0001                	nop
+ 456:	0001                	nop
+ 458:	0001                	nop
+ 45a:	0001                	nop
+ 45c:	0001                	nop
+ 45e:	0001                	nop
+ 460:	0001                	nop
+ 462:	0001                	nop
+ 464:	0001                	nop
+ 466:	0001                	nop
+ 468:	0001                	nop
+ 46a:	0001                	nop
+ 46c:	0001                	nop
+ 46e:	0001                	nop
+ 470:	0001                	nop
+ 472:	0001                	nop
+ 474:	0001                	nop
+ 476:	0001                	nop
+ 478:	0001                	nop
+ 47a:	0001                	nop
+ 47c:	0001                	nop
+ 47e:	0001                	nop
+ 480:	0001                	nop
+ 482:	0001                	nop
+ 484:	0001                	nop
+ 486:	0001                	nop
+ 488:	0001                	nop
+ 48a:	0001                	nop
+ 48c:	0001                	nop
+ 48e:	0001                	nop
+ 490:	0001                	nop
+ 492:	0001                	nop
+ 494:	0001                	nop
+ 496:	0001                	nop
+ 498:	0001                	nop
+ 49a:	0001                	nop
+ 49c:	0001                	nop
+ 49e:	0001                	nop
+ 4a0:	0001                	nop
+ 4a2:	0001                	nop
+ 4a4:	0001                	nop
+ 4a6:	0001                	nop
+ 4a8:	0001                	nop
+ 4aa:	0001                	nop
+ 4ac:	0001                	nop
+ 4ae:	0001                	nop
+ 4b0:	0001                	nop
+ 4b2:	0001                	nop
+ 4b4:	0001                	nop
+ 4b6:	0001                	nop
+ 4b8:	0001                	nop
+ 4ba:	0001                	nop
+ 4bc:	0001                	nop
+ 4be:	0001                	nop
+ 4c0:	0001                	nop
+ 4c2:	0001                	nop
+ 4c4:	0001                	nop
+            "nop\n"
+            ".endr\n"
+            ::: "memory"
+        );
+
+        int ok = vulnerable_check(supplied_value, expected_value);
+ 4c6:	c081a503          	lw	a0,-1016(gp) # 20000004 <supplied_value>
+ 4ca:	c041a583          	lw	a1,-1020(gp) # 20000000 <expected_value>
+ 4ce:	3385                	jal	22e <vulnerable_check>
+
+        funDigitalWrite(PIN_TRIGGER, FUN_LOW);
+ 4d0:	00020737          	lui	a4,0x20
+ 4d4:	c818                	sw	a4,16(s0)
+
+        if (ok) {
+ 4d6:	cd01                	beqz	a0,4ee <main+0x2b4>
+            funDigitalWrite(PIN_SUCCESS, FUN_HIGH);
+ 4d8:	4711                	li	a4,4
+            Delay_Ms(20);
+ 4da:	6575                	lui	a0,0x1d
+            funDigitalWrite(PIN_SUCCESS, FUN_HIGH);
+ 4dc:	c818                	sw	a4,16(s0)
+            Delay_Ms(20);
+ 4de:	4c050513          	addi	a0,a0,1216 # 1d4c0 <blink.c.12f4b091+0x1b0f6>
+ 4e2:	3921                	jal	fa <DelaySysTick>
+            funDigitalWrite(PIN_SUCCESS, FUN_LOW);
+ 4e4:	c804                	sw	s1,16(s0)
+            funDigitalWrite(PIN_FAIL, FUN_HIGH);
+            Delay_Ms(20);
+            funDigitalWrite(PIN_FAIL, FUN_LOW);
+        }
+
+        Delay_Ms(20);
+ 4e6:	6575                	lui	a0,0x1d
+ 4e8:	4c050513          	addi	a0,a0,1216 # 1d4c0 <blink.c.12f4b091+0x1b0f6>
+ 4ec:	b3d1                	j	2b0 <main+0x76>
+            funDigitalWrite(PIN_FAIL, FUN_HIGH);
+ 4ee:	4741                	li	a4,16
+            Delay_Ms(20);
+ 4f0:	6575                	lui	a0,0x1d
+            funDigitalWrite(PIN_FAIL, FUN_HIGH);
+ 4f2:	c818                	sw	a4,16(s0)
+            Delay_Ms(20);
+ 4f4:	4c050513          	addi	a0,a0,1216 # 1d4c0 <blink.c.12f4b091+0x1b0f6>
+ 4f8:	3109                	jal	fa <DelaySysTick>
+            funDigitalWrite(PIN_FAIL, FUN_LOW);
+ 4fa:	001007b7          	lui	a5,0x100
+ 4fe:	c81c                	sw	a5,16(s0)
+ 500:	b7dd                	j	4e6 <main+0x2ac>
+	...

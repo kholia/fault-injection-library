@@ -466,6 +466,11 @@ class PicoGlitcherInterface(MicroPythonScript):
         decoded_str = version_bytes.decode('utf-8').strip()
         return ast.literal_eval(decoded_str)
 
+    def get_hardware_version(self):
+        version_bytes = self.pyb.exec('mp.get_hardware_version()')
+        decoded_str = version_bytes.decode('utf-8').strip()
+        return ast.literal_eval(decoded_str)
+
     def set_trigger(self, mode:str, pin_trigger:str, edge_type:str = "rising"):
         self.pyb.exec(f'mp.set_trigger("{mode}", "{pin_trigger}", "{edge_type}")')
 
@@ -788,16 +793,27 @@ class PicoGlitcher(Glitcher):
 
         # check compatibility
         try:
+            try:
+                hw_version = self.pico_glitcher.get_hardware_version()
+            except Exception:
+                # Firmware releases before hardware-version reporting only
+                # expose their software version.
+                hw_version = None
             pg_fw_version = self.pico_glitcher.get_firmware_version()
             fi_fw_version = list(map(int, version("findus").split('.')))
-            print(f"[+] Version of Pico Glitcher: {pg_fw_version}")
+            if hw_version is None:
+                print("[+] Hardware: unknown (update firmware to report the revision)")
+            else:
+                hardware_name = "SimpleGlitcher" if hw_version[0] == 0 else "Pico Glitcher"
+                print(f"[+] Hardware: {hardware_name} v{'.'.join(map(str, hw_version))}")
+            print(f"[+] Firmware version: {pg_fw_version}")
             print(f"[+] Version of findus: {fi_fw_version}")
             # check only major and minor version, but not the build number
             if pg_fw_version[:2] != fi_fw_version[:2]:
                 raise Exception("Version mismatch")
         except Exception as _:
-            print("[-] Fatal error: Versions of findus and Pico Glitcher do not match.")
-            print("[*] Update the Pico Glitcher firmware and findus software. See README.md.")
+            print("[-] Fatal error: The glitcher firmware and findus versions do not match.")
+            print("[*] Update the glitcher firmware and findus software. See README.md.")
             print("[*] pip install --upgrade findus")
             print("[*] update-fw --port /dev/<rpi-tty-port> --version <pico-glitcher-version>")
             sys.exit(-1)

@@ -2,6 +2,15 @@
 
 This is a brief summary of the different versions of Pico Glitcher and what has changed between versions.
 
+## SimpleGlitcher
+
+### v0
+
+- RP2350-based, 3.3V-only SimpleGlitcher.
+- Supports low-power, high-power, and user-selectable crowbar glitch outputs.
+- Does not include the voltage multiplexer or pulse-shaping expansion interface.
+- Supports [TPS2051B](https://www.ti.com/product/TPS2051B) (active-high `EN`, default) and [TPS2041B](https://www.ti.com/product/TPS2041B) (active-low `EN`) VTARGET switches. Select the fitted part with the `update-fw --vtarget-switch` option.
+
 ## Pico Glitcher v1
 
 ### v1.0

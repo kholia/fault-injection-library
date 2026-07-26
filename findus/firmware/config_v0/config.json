@@ -1,0 +1,8 @@
+{
+    "hardware_version": [0, 0, 0],
+    "software_version": [1, 14, 1],
+    "vtarget_switch": "TPS2051B",
+    "mux_vinit": "3.3",
+    "ps_offset": 1.4,
+    "ps_factor": 0.83
+}

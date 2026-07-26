@@ -4,22 +4,36 @@ The following command-line tools are available after the installation of findus 
 
 ## update-fw
 
-Tool to update the firmware of the Pico Glitcher.
+Tool to update the firmware of the SimpleGlitcher or Pico Glitcher.
 Usage:
 
 ```bash
 $ update-fw --help
 usage: update-fw [-h] --port PORT [--version VERSION]
+                 [--vtarget-switch {TPS2041B,TPS2051B}]
 
-Update the firmware of the Pico Glitcher.
+Update the firmware of the SimpleGlitcher or Pico Glitcher.
 
 options:
   -h, --help         show this help message and exit
   --port PORT        /dev/tty* of the Raspberry Pi Pico
-  --version VERSION  Pico Glitcher (one of v1, v2.1, v2.2, v2.3, v2.4, v2.5, v3.0)
+  --version VERSION  Glitcher hardware (one of v0, v1, v2.1, v2.2, v2.3, v2.4, v2.5, v3.0)
+  --vtarget-switch {TPS2041B,TPS2051B}
+                     SimpleGlitcher v0 VTARGET switch (default: TPS2051B)
 ```
 
 Examples:
+
+- Update SimpleGlitcher v0 to the latest firmware version:
+```bash
+update-fw --port /dev/ttyACM0 --version v0
+```
+
+SimpleGlitcher v0 defaults to the active-high TPS2051B. For a board fitted with the active-low TPS2041B, use:
+
+```bash
+update-fw --port /dev/ttyACM0 --version v0 --vtarget-switch TPS2041B
+```
 
 - Update hardware version 3.0 to the latest firmware version:
 ```bash
@@ -95,7 +109,7 @@ cd fault-injection-library/findus/firmware
 upload-ampy --files AD910X.py FastADC.py Globals.py PicoGlitcher.py PulseGenerator.py Spline.py Statemachines.py <config-version>/config.json --port /dev/<rpi-tty-port>
 ```
 
-where `<rpi-tty-port>` is the tty port the Pico Glitcher is available at, and `<config-version>` is the config path for your specific Pico Glitcher hardware revision. For example `config_v1` for version 1, `config_v2.1-2` for versions 2.1 and 2.2, `config_v2.3-4` for versions v2.3 and v2.4, and `config_v3.0` for version 3.0, and so on.
+where `<rpi-tty-port>` is the tty port the glitcher is available at, and `<config-version>` is the config path for your specific hardware revision. For example `config_v0` for SimpleGlitcher v0, `config_v1` for Pico Glitcher version 1, `config_v2.1-2` for versions 2.1 and 2.2, `config_v2.3-4` for versions v2.3 and v2.4, and `config_v3.0` for version 3.0.
 
 
 ## analyzer

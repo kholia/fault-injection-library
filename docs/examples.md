@@ -25,6 +25,10 @@ cd examples
 python pico-glitcher.py --rpico /dev/<rpi-tty-port> --delay 1000 1000 --length 100 100
 ```
 
+For the SimpleGlitcher v0 test setup, use a 3.3 V `VTARGET`. The expected waveform is a low-going pulse approximately `1 µs` after the rising edge on `RESET`, with a width of approximately `100 ns`.
+
+As a starting point, use 10× probes with DC coupling, set both `RESET` and `GLITCH` to approximately `1 V/div`, and trigger on the rising edge of `RESET` at approximately `1.5 V`. A `200 ns/div` time base shows the trigger and glitch together; after locating the pulse, zoom to `20 ns/div` to `50 ns/div` to measure its width. The `GLITCH` trace should normally be near `3.3 V` and briefly fall toward `0 V`. Connect both probe ground clips to the SimpleGlitcher ground.
+
 You should now be able to observe the glitches with an oscilloscope on the 10 Ohm resistor.
 Measure the expected delay and glitch length with the oscilloscope.
 

@@ -4,7 +4,9 @@ Findus (aka the fault-injection-library) is a toolchain to perform fault-injecti
 This library offers an easy entry point to carry out fault-injection attacks against microcontrollers, SoCs and MCUs.
 With the provided and easy to use functions and classes, fault-injection projects can be realized quickly with cheap and available hardware.
 
-Findus supports the [ChipWhisperer Pro](https://rtfm.newae.com/Capture/ChipWhisperer-Pro/), the [ChipWhisperer Husky](https://rtfm.newae.com/Capture/ChipWhisperer-Husky/) and the [Pico Glitcher](https://mkesenheimer.github.io/blog/pico-glitcher-v3.html).
+Findus supports the SimpleGlitcher, the [ChipWhisperer Pro](https://rtfm.newae.com/Capture/ChipWhisperer-Pro/), the [ChipWhisperer Husky](https://rtfm.newae.com/Capture/ChipWhisperer-Husky/) and the [Pico Glitcher](https://mkesenheimer.github.io/blog/pico-glitcher-v3.html).
+
+![SimpleGlitcher v0](docs/images/Simple-Glitcher-v0.png)
 
 More information about the fault-injection-library and the Pico Glitcher can be found on [https://fault-injection-library.readthedocs.io/en/latest/](https://fault-injection-library.readthedocs.io/en/latest/).
 
@@ -13,10 +15,10 @@ More information about the fault-injection-library and the Pico Glitcher can be 
 - [Purchasing the Pico Glitcher](#purchasing-the-pico-glitcher)
 - [Documentation](#documentation)
 - [Installing findus](#installing-findus)
-- [Updating the Pico Glitcher firmware](#updating-the-pico-glitcher-firmware)
+- [Updating the glitcher firmware](#updating-the-glitcher-firmware)
     - [Step 1: MicroPython firmware](#step-1-microPython-firmware)
     - [Step 2: Install the findus library](#step-2-install-the-findus-library)
-    - [Step 3: Update the firmware of your Pico Glitcher](#step-3-upload-the-pico-glitcher-micropython-script)
+    - [Step 3: Update the glitcher firmware](#step-3-update-the-glitcher-firmware)
 - [Installing from source](#installing-from-source)
 - [Test the functionality of your Pico Glitcher](#test-the-functionality-of-your-pico-glitcher)
 - [UART Trigger](#uart-trigger)
@@ -80,9 +82,9 @@ Start by copying [https://github.com/MKesenheimer/fault-injection-library/blob/m
 
 See [examples](examples.md) for more information how to use findus and the Pico Glitcher.
 
-## Updating the Pico Glitcher firmware
+## Updating the glitcher firmware
 
-Your Pico Glitcher should come with the latest firmware already installed. If not, follow the following procedure to update the software on the Pico Glitcher.
+Your glitcher should come with the latest firmware already installed. If not, follow the following procedure to update its software.
 
 ### Step 1: MicroPython firmware
 
@@ -108,7 +110,7 @@ Make sure to have pip [installed](https://docs.python.org/3/library/ensurepip.ht
 pip install findus
 ```
 
-### Step 3: Update the firmware of your Pico Glitcher
+### Step 3: Update the glitcher firmware
 
 If everything went well, you should have the `update-fw` script available for execution in your command-line environment.
 Connect the Pico Glitcher to your computer and check which serial device comes up:
@@ -123,7 +125,26 @@ Take note of the device path. Next update the Pico Glitcher firmware and the spe
 update-fw --port /dev/<rpi-tty-port> --version <pico-glitcher-version>
 ```
 
-Your Pico Glitcher should now be ready to perform fault-injection attacks.
+For a SimpleGlitcher v0 connected as `/dev/ttyACM0`, use:
+
+```bash
+update-fw --port /dev/ttyACM0 --version v0
+```
+
+The `v0` selection uploads `config_v0/config.json`, which identifies the hardware as SimpleGlitcher v0 and applies its pinout. It defaults to the TPS2051B VTARGET power switch:
+
+- [`TPS2051B`](https://www.ti.com/product/TPS2051B): active-high `EN`; this is the SimpleGlitcher v0 default.
+- [`TPS2041B`](https://www.ti.com/product/TPS2041B): active-low `EN`; select it explicitly when this part is fitted.
+
+To update a SimpleGlitcher v0 fitted with TPS2041B, use:
+
+```bash
+update-fw --port /dev/ttyACM0 --version v0 --vtarget-switch TPS2041B
+```
+
+Always select the part actually fitted to the board. Using the wrong selection reverses the VTARGET enable/disable behavior.
+
+Your glitcher should now be ready to perform fault-injection attacks.
 
 ## Installing from source
 
@@ -163,6 +184,38 @@ Next, run the test script `pico-glitcher.py` located in `fault-injection-library
 ```bash
 cd example
 python pico-glitcher.py --rpico /dev/<rpi-tty-port> --delay 1000 1000 --length 100 100
+```
+
+For the SimpleGlitcher v0 test setup, use a 3.3 V `VTARGET`. The command requests a low-going glitch approximately `1 µs` after the rising edge on `RESET`, with a pulse width of approximately `100 ns`. Propagation delays and oscilloscope probe placement can cause small differences.
+
+Useful starting settings for the oscilloscope are:
+
+- Use 10× probes and DC coupling for both channels.
+- Set channel 1 (`RESET`) and channel 2 (`GLITCH`) to approximately `1 V/div`.
+- Trigger on the rising edge of channel 1 at approximately `1.5 V`.
+- Start with a horizontal time base of `200 ns/div` and place the trigger near the left side of the display. This shows the RESET edge and the glitch in the same acquisition.
+- After locating the pulse, use `20 ns/div` to `50 ns/div` to measure its approximately `100 ns` width more accurately.
+
+The `GLITCH` trace should normally sit near `3.3 V` and briefly fall toward `0 V`. Keep both probe ground clips connected to the SimpleGlitcher ground.
+
+Example session:
+
+```
+$ python pico-glitcher.py --rpico /dev/ttyACM0 --delay 1000 1000 --length 100 100
+[+] Hardware: SimpleGlitcher v0.0.0
+[+] Firmware version: [1, 14, 1]
+[+] Version of findus: [1, 14, 1]
+[+] Experiment 0	0	(NA)	100	1000	G	b'Trigger ok'
+[+] Experiment 1	0	(NA)	100	1000	G	b'Trigger ok'
+[+] Experiment 2	0	(NA)	100	1000	G	b'Trigger ok'
+[+] Experiment 3	0	(NA)	100	1000	G	b'Trigger ok'
+[+] Experiment 4	0	(NA)	100	1000	G	b'Trigger ok'
+[+] Experiment 5	0	(NA)	100	1000	G	b'Trigger ok'
+[+] Experiment 6	0	(NA)	100	1000	G	b'Trigger ok'
+[+] Experiment 7	0	(NA)	100	1000	G	b'Trigger ok'
+[+] Experiment 8	0	(NA)	100	1000	G	b'Trigger ok'
+[+] Experiment 9	0	(NA)	100	1000	G	b'Trigger ok'
+...
 ```
 
 You should now be able to observe the glitches with an oscilloscope on the 10 Ohm resistor.

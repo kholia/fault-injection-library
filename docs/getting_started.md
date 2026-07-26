@@ -16,7 +16,7 @@ wget https://raw.githubusercontent.com/MKesenheimer/fault-injection-library/refs
 python pico-glitcher.py --rpico /dev/ttyACM0 --delay 0 0 --length 100 100
 ```
 
-Replace `<pico-glitcher-version>` with the hardware version you have. For example `v1`, `v2.1`, `v2.2`, `v2.3`, `v2.4`, `v2.5` or `v3.0`, and so on.
+Replace `<pico-glitcher-version>` with the hardware version you have. Use `v0` for SimpleGlitcher v0; Pico Glitcher versions include `v1`, `v2.1`, `v2.2`, `v2.3`, `v2.4`, `v2.5`, and `v3.0`.
 
 Note that the paths and tty names may be different in your case.
 
@@ -55,9 +55,9 @@ Start by copying [https://github.com/MKesenheimer/fault-injection-library/blob/m
 
 See [examples](examples.md) for more information how to use findus and the Pico Glitcher.
 
-## Updating the Pico Glitcher firmware
+## Updating the glitcher firmware
 
-Your Pico Glitcher should come with the latest firmware already installed. If not, follow the following procedure to update the software on the Pico Glitcher.
+Your glitcher should come with the latest firmware already installed. If not, follow the following procedure to update its software.
 
 ### Step 1: MicroPython firmware
 
@@ -89,7 +89,7 @@ Make sure to have pip [installed](https://docs.python.org/3/library/ensurepip.ht
 pip install findus
 ```
 
-### Step 3: Update the Pico Glitcher firmware
+### Step 3: Update the glitcher firmware
 
 If everything went well, you should have the `update-fw` script available for execution in your command-line environment.
 Connect the Pico Glitcher to your computer and check which serial device comes up:
@@ -104,7 +104,21 @@ Take note of the device path. Next upload the Pico Glitcher firmware and the spe
 update-fw --port /dev/<rpi-tty-port> --version <pico-glitcher-version>
 ```
 
-Your Pico Glitcher should now be ready to perform fault-injection attacks.
+For a SimpleGlitcher v0 connected as `/dev/ttyACM0`, use:
+
+```bash
+update-fw --port /dev/ttyACM0 --version v0
+```
+
+The `v0` selection uploads `config_v0/config.json`, which identifies the hardware as SimpleGlitcher v0 and applies its pinout. The default is the [TPS2051B](https://www.ti.com/product/TPS2051B), whose `EN` input is active high. If the board is fitted with the active-low [TPS2041B](https://www.ti.com/product/TPS2041B), select it while updating:
+
+```bash
+update-fw --port /dev/ttyACM0 --version v0 --vtarget-switch TPS2041B
+```
+
+Always select the part actually fitted to the board. Using the wrong selection reverses the VTARGET enable/disable behavior.
+
+Your glitcher should now be ready to perform fault-injection attacks.
 
 ## Installing from source
 

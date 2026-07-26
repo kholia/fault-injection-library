@@ -55,23 +55,22 @@ class PicoGlitcher():
         if self.config["hardware_version"][0] == 1:
             # overclocking supposedly works, script runs also with 270_000_000
             self.set_frequency(200_000_000)
-        elif self.config["hardware_version"][0] >= 2:
+        elif self.config["hardware_version"][0] == 0 or self.config["hardware_version"][0] >= 2:
             self.set_frequency(250_000_000)
         # LED
         self.led = Pin("LED", Pin.OUT)
         self.led.low()
-        if (self.config["hardware_version"][0] == 2 and self.config["hardware_version"][1] >= 3) or self.config["hardware_version"][0] == 3:
-            # VTARGET_EN (active high) for v2.3 and higher
+        if Globals.VTARGET_ACTIVE_HIGH:
+            # VTARGET_EN is active high for TPS2051B and Pico Glitcher v2.3+.
             self.pin_vtarget_en = Pin(Globals.VTARGET_EN, Pin.OUT, Pin.PULL_DOWN)
             self.vtarget_enable_value = 1
             self.vtarget_disable_value = 0
-        elif (self.config["hardware_version"][0] == 2 and self.config["hardware_version"][1] < 3) or self.config["hardware_version"][0] == 1:
-            # VTARGET_EN (active low) for 2.2 and lower
+        else:
+            # VTARGET_EN (active low) for Pico Glitcher v1/v2.1/v2.2 and
+            # SimpleGlitcher v0 boards fitted with TPS2041B.
             self.pin_vtarget_en = Pin(Globals.VTARGET_EN, Pin.OUT, Pin.PULL_UP)
             self.vtarget_enable_value = 0
             self.vtarget_disable_value = 1
-        else:
-            raise Exception(f"Hardware version {self.config['hardware_version']} not implemented.")
         self.pin_vtarget_en.value(self.vtarget_disable_value)
         # RESET
         self.pin_reset = Pin(Globals.RESET, Pin.OUT, Pin.PULL_UP)
@@ -144,6 +143,16 @@ class PicoGlitcher():
         """
         print(self.config["software_version"])
         return self.config["software_version"]
+
+    def get_hardware_version(self) -> list[int]:
+        """
+        Get the configured glitcher hardware version.
+
+        Returns:
+            The hardware version from config.json.
+        """
+        print(self.config["hardware_version"])
+        return self.config["hardware_version"]
 
     def set_frequency(self, frequency:int = 200_000_000):
         """
