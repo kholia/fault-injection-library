@@ -6,9 +6,11 @@ Tuned for demo_py32f003.c auth-bypass target (fault-injection lab firmware).
 
 The matching firmware runs at 24 MHz (~41.7 ns/cycle). Zmu execution of the
 exact guarded ELF places the vulnerable BNE at 0x0800018c exactly 160 target
-cycles (6666.7 ns) after the PA0 rising edge. Translate that target when using
-a non-250-MHz Pico PIO clock, then sweep narrowly around it to absorb the Pico
-trigger path, MOSFET turn-on, rail slew, and flash-fetch timing.
+cycles (6666.7 ns) after the PA0 rising edge. Sweep narrowly around it to
+absorb the Pico trigger path, MOSFET turn-on, rail slew, and flash-fetch timing.
+
+This example uses RP2350 HSTX glitching. At its default 250 MHz Pico clock,
+offset and width use 2 ns steps.
 
 Marker protocol:
   - success high, fail low: vulnerable check returned success
@@ -43,29 +45,23 @@ import time
 from collections import Counter
 from pathlib import Path
 
-try:
-    from findus import Database, PicoGlitcher
-except ModuleNotFoundError as exc:
-    if exc.name != "findus":
-        raise
-    # Permit ``python3 examples/...py`` from a source checkout.
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from findus import Database, PicoGlitcher
+# Prefer the adjacent source tree when this example is run from a checkout;
+# otherwise an older site-installed findus can silently shadow new APIs.
+_SOURCE_ROOT = Path(__file__).resolve().parents[1]
+if (_SOURCE_ROOT / "findus").is_dir():
+    sys.path.insert(0, str(_SOURCE_ROOT))
+
+from findus import Database, PicoGlitcher
 
 
-# Exact RP2040 PLL outputs between 210 and 250 MHz with a 12 MHz crystal.
-# Other values make MicroPython machine.freq() raise ``ValueError``.
-VALID_PIO_FREQUENCIES_MHZ = {
-    210, 212, 213, 214, 216, 218, 219, 220, 222, 224, 225, 226,
-    228, 230, 231, 232, 234, 236, 237, 238, 240, 242, 243, 244,
-    246, 248, 249, 250,
-}
+# HSTX mode targets RP2350. 250 MHz is the project default; 300 MHz is an
+# optional, unsupported overclock documented in docs/hstx.md.
+VALID_HSTX_FREQUENCIES_MHZ = {250, 300}
 
 # Zmu execution of the exact guarded ELF observes the BNE at 0x0800018c
 # precisely 160 target cycles after the PA0 trigger rises.
 TARGET_CLOCK_HZ = 24_000_000
 TRIGGER_TO_BNE_CYCLES = 160
-PICO_REFERENCE_CLOCK_MHZ = 250.0
 
 
 class Glitcher:
@@ -107,14 +103,29 @@ class Glitcher:
 
     def connect(self) -> None:
         self.dev = PicoGlitcher()
+        if not hasattr(self.dev, "arm_hstx"):
+            raise RuntimeError(
+                "installed findus lacks HSTX support; run: python -m pip install -e ."
+            )
         try:
             self.dev.init(port=self.port)
-        except SystemExit:
-            raise RuntimeError("Pico Glitcher connection failed (port busy or not found)")
+        except SystemExit as exc:
+            raise RuntimeError(
+                "Pico Glitcher initialization failed; install this checkout and update its firmware"
+            ) from exc
 
-        # SimpleGlitcher v0 normally runs at 250 MHz. A slightly lower clock
-        # stretches each PIO cycle and provides pulse-energy settings between
-        # the otherwise coarse 4 ns width bins.
+        has_hstx = self.dev.pico_glitcher.pyb.exec(
+            'print(hasattr(mp, "arm_hstx"))'
+        ).decode("utf-8").strip()
+        if has_hstx != "True":
+            hardware_version = self.dev.pico_glitcher.get_hardware_version()
+            firmware_target = "v0" if hardware_version[0] == 0 else "v3.0"
+            raise RuntimeError(
+                "Pico firmware lacks HSTX support; run: "
+                f"update-fw --port {self.port} --version {firmware_target}"
+            )
+
+        # SimpleGlitcher v0 and Pico Glitcher v3 normally run at 250 MHz.
         self.dev.pico_glitcher.set_frequency(self.pio_frequency_hz)
 
         if self.glitch_mode == "hp":
@@ -195,7 +206,7 @@ def _poll(timeout_ms):
 
     def arm(self, offset: int, width: int, level: int = 1) -> None:
         _ = level
-        self._with_retry(self.dev.arm, offset, width)
+        self._with_retry(self.dev.arm_hstx, offset, width)
 
     def wait_and_glitch(self, timeout_ms: int) -> bool:
         try:
@@ -338,8 +349,22 @@ def build_coordinate_list(args: argparse.Namespace) -> list[tuple[int, int]]:
     coords = []
     for offset in range(args.offset_start, args.offset_stop + 1, args.offset_step):
         for width in range(args.width_start, args.width_stop + 1, args.width_step):
-            coords.append((offset, width))
+            if hstx_coordinate_valid(offset, width, args.pio_frequency_mhz):
+                coords.append((offset, width))
     return coords
+
+
+def hstx_coordinate_valid(offset_ns: int, width_ns: int, frequency_mhz: float) -> bool:
+    """Return whether a coordinate fits the 32-half-cycle HSTX waveform."""
+    delay_ticks_float = offset_ns * frequency_mhz / 500.0
+    width_ticks_float = width_ns * frequency_mhz / 500.0
+    delay_ticks = round(delay_ticks_float)
+    width_ticks = round(width_ticks_float)
+    if abs(delay_ticks_float - delay_ticks) > 1e-6:
+        return False
+    if abs(width_ticks_float - width_ticks) > 1e-6 or width_ticks < 1:
+        return False
+    return (delay_ticks & 1) + width_ticks <= 32
 
 
 def run_coordinate(
@@ -445,15 +470,25 @@ def run_coordinate(
 
 def run_sweep(args: argparse.Namespace) -> int:
     pio_frequency_mhz = int(args.pio_frequency_mhz)
-    if args.pio_frequency_mhz != pio_frequency_mhz or pio_frequency_mhz not in VALID_PIO_FREQUENCIES_MHZ:
-        valid = ", ".join(str(value) for value in sorted(VALID_PIO_FREQUENCIES_MHZ))
+    if args.pio_frequency_mhz != pio_frequency_mhz or pio_frequency_mhz not in VALID_HSTX_FREQUENCIES_MHZ:
+        valid = ", ".join(str(value) for value in sorted(VALID_HSTX_FREQUENCIES_MHZ))
         raise SystemExit(
             f"unsupported --pio-frequency-mhz {args.pio_frequency_mhz:g}; "
-            f"valid RP2040 PLL frequencies are: {valid}"
+            f"supported RP2350 HSTX campaign frequencies are: {valid}"
         )
 
+    coords = build_coordinate_list(args)
+    if not coords:
+        raise SystemExit(
+            "no valid HSTX coordinates: at 250 MHz use 2 ns multiples; "
+            "at 300 MHz integer-nanosecond coordinates must use 5 ns multiples"
+        )
+    requested_coordinate_count = (
+        len(range(args.offset_start, args.offset_stop + 1, args.offset_step))
+        * len(range(args.width_start, args.width_stop + 1, args.width_step))
+    )
+
     target_bne_ns = TRIGGER_TO_BNE_CYCLES * 1_000_000_000 / TARGET_CLOCK_HZ
-    estimated_pico_offset_ns = target_bne_ns * pio_frequency_mhz / PICO_REFERENCE_CLOCK_MHZ
 
     print("[+] Starting sweep script...", flush=True)
     print(
@@ -461,8 +496,6 @@ def run_sweep(args: argparse.Namespace) -> int:
         f"    Explicit pre-branch delay: 128 NOPs = about 5333 ns\n"
         f"    16-NOP pre-BNE guard:      about 667 ns\n"
         f"    Zmu trigger -> BNE:        {TRIGGER_TO_BNE_CYCLES} cycles = {target_bne_ns:.1f} ns\n"
-        f"    PIO-adjusted coordinate:   about {estimated_pico_offset_ns:.1f} ns "
-        f"before trigger-path/rail latency\n"
         f"    Selected sweep:            {args.offset_start}-{args.offset_stop} ns",
         flush=True,
     )
@@ -485,12 +518,14 @@ def run_sweep(args: argparse.Namespace) -> int:
     )
 
     print(f"[+] Connecting to Pico Glitcher on {args.glitch_port}...", end="", flush=True)
-    g.connect()
+    try:
+        g.connect()
+    except RuntimeError as exc:
+        raise SystemExit(f"\n[-] {exc}") from exc
     print(" Done.", flush=True)
     print(
-        f"[i] Pico PIO clock: {args.pio_frequency_mhz:g} MHz "
-        f"({1000.0 / args.pio_frequency_mhz:.3f} ns/cycle); "
-        f"offsets run about {250.0 / args.pio_frequency_mhz:.3f}x longer than at 250 MHz",
+        f"[i] Pico/HSTX clock: {args.pio_frequency_mhz:g} MHz; "
+        f"HSTX quantum={500.0 / args.pio_frequency_mhz:.3f} ns",
         flush=True,
     )
 
@@ -509,8 +544,13 @@ def run_sweep(args: argparse.Namespace) -> int:
     interrupted = False
     hit_coords: list[tuple[int, int]] = []
 
-    coords = build_coordinate_list(args)
     total_coords = len(coords)
+    if total_coords != requested_coordinate_count:
+        print(
+            f"[i] HSTX alignment/window filter kept {total_coords} of "
+            f"{requested_coordinate_count} requested coordinates.",
+            flush=True,
+        )
     print(
         f"[+] Phase 1 (coarse): {total_coords} coordinates, "
         f"{args.trials} trials each (early-stop after {args.early_stop_n} successes)",
@@ -637,10 +677,10 @@ def _build_fine_coords(
             for d_w in range(-args.fine_width_radius, args.fine_width_radius + 1, args.fine_width_step):
                 o = base_offset + d_off
                 w = base_width + d_w
-                if o < 0 or w < 5:
+                if o < 0 or w < 1:
                     continue
                 key = (o, w)
-                if key not in seen:
+                if key not in seen and hstx_coordinate_valid(o, w, args.pio_frequency_mhz):
                     seen.add(key)
                     fine.append(key)
     fine.sort()
@@ -662,7 +702,7 @@ def parse_args() -> argparse.Namespace:
     hw.add_argument("--glitch-mode", choices=("lp", "hp"), default="lp",
                      help="Select the Pico Glitcher low- or high-power crowbar output.")
     hw.add_argument("--pio-frequency-mhz", type=float, default=250.0,
-                     help="Pico PIO clock; lower valid PLL settings interpolate pulse energy between 250 MHz width bins.")
+                     help="RP2350 HSTX clock: 250 MHz default or experimental 300 MHz.")
     hw.add_argument("--trigger-input", choices=("default", "alt", "ext1", "ext2"), default="default")
     hw.add_argument("--trigger-edge", choices=("rising", "falling"), default="rising",
                      help="Rising selects the PA0 trigger pulse leading edge.")
@@ -681,19 +721,18 @@ def parse_args() -> argparse.Namespace:
 
     coarse = p.add_argument_group("phase 1 (coarse sweep)")
     # Zmu places the isolated BNE exactly 160 target cycles (6666.7 ns) after
-    # PA0 rises. At a non-250-MHz PIO clock, scale the command coordinate by
-    # pio_frequency_mhz / 250, then sweep around it for hardware-path latency.
+    # PA0 rises. HSTX delay values are physical nanoseconds at either clock.
     coarse.add_argument("--offset-start", type=int, default=5500,
                         help="Start offset in ns from the PA0 rising edge.")
     coarse.add_argument("--offset-stop", type=int, default=7500,
                         help="Stop offset in ns past the predicted isolated-BNE window.")
-    coarse.add_argument("--offset-step", type=int, default=40,
+    coarse.add_argument("--offset-step", type=int, default=1,
                         help="Coarse offset step in ns (about one 24 MHz core cycle).")
-    coarse.add_argument("--width-start", type=int, default=5,
+    coarse.add_argument("--width-start", type=int, default=2,
                         help="Min glitch width in ns.")
-    coarse.add_argument("--width-stop", type=int, default=160,
+    coarse.add_argument("--width-stop", type=int, default=20,
                         help="Max glitch width in ns.")
-    coarse.add_argument("--width-step", type=int, default=5,
+    coarse.add_argument("--width-step", type=int, default=2,
                         help="Coarse width step in ns.")
     coarse.add_argument("--trials", type=int, default=10,
                         help="Trials per coordinate in coarse pass.")
@@ -703,11 +742,11 @@ def parse_args() -> argparse.Namespace:
                       help="Trials per coordinate in fine pass (0 to skip phase 2).")
     fine.add_argument("--fine-offset-radius", type=int, default=80,
                       help="Explore +/- this many ns around each hit offset.")
-    fine.add_argument("--fine-offset-step", type=int, default=5,
+    fine.add_argument("--fine-offset-step", type=int, default=2,
                       help="Fine offset step in ns.")
-    fine.add_argument("--fine-width-radius", type=int, default=20,
+    fine.add_argument("--fine-width-radius", type=int, default=10,
                       help="Explore +/- this many ns around each hit width.")
-    fine.add_argument("--fine-width-step", type=int, default=5,
+    fine.add_argument("--fine-width-step", type=int, default=2,
                       help="Fine width step in ns.")
 
     eff = p.add_argument_group("efficiency")
